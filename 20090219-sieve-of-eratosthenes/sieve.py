@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 
-import itertools
 import sys
+
 
 # note: the 'modulo' version with the same cut-offs uses much less memory in Python
 # but is also way slower
@@ -24,7 +24,7 @@ def sieve(n):
 
 
 def main():
-    print 'Enter an upper bound for the sieve.'
+    print 'Enter an upper bound for the sieve:'
     n = int(sys.stdin.readline())
     result = sieve(n)
     print 'Number of primes: {0}\n{1}'.format(len(result), result)

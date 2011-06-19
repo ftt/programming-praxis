@@ -6,7 +6,7 @@ import sys
 from numbers import Number
 
 
-_OPERATORS = {
+OPERATORS = {
     '+': operator.add,
     '-': operator.sub,
     '*': operator.mul,
@@ -16,7 +16,7 @@ _OPERATORS = {
 class ParseException(Exception):
     pass
 
-def _to_number(string):
+def to_number(string):
     '''Accepts a string or and returns a number represented by that string.
     If a number is passed, that number is returned intact.'''
     if isinstance(string, Number):
@@ -27,7 +27,7 @@ def _to_number(string):
         return float(string)
 
 
-def _calculate(stack):
+def calculate(stack):
     '''Takes a list representing an expression stack and solves the first expression found.
     Changes the list in place.'''
     op = None

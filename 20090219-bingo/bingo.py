@@ -41,6 +41,7 @@ def check_bingo(card, number):
             return True
     return False
 
+
 def play(cards):
     pool = range(1, 76)
     random.shuffle(pool)
@@ -57,6 +58,7 @@ def play(cards):
 def main():
     print 'Average number of calls required before a single card achieves bingo: {0}'.format(sum(play([make_card()]) for i in xrange(100)) * 0.01)
     print 'Average number of calls required before any card among five hundred in play achieves bingo: {0}'.format(sum(play([make_card() for j in xrange(500)]) for i in xrange(100)) * 0.01)
+
 
 if __name__ == '__main__':
     main()

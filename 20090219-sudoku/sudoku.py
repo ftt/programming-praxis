@@ -4,7 +4,7 @@ import unittest
 
 digits = '123456789'
 size = 9
-
+squares = dict.fromkeys([(r, c) for r in xrange(size) for c in xrange(size)])
 
 def create_empty_grid():
     square_centers = ((r, c) for r in xrange(1, size, 3) for c in xrange(1, size, 3))
@@ -12,73 +12,71 @@ def create_empty_grid():
     cells = dict.fromkeys([(r, c) for r in xrange(size) for c in xrange(size)])
     for c in cells:
         i, v = min(square_centers, key = lambda sc: sum([abs(c[0] - sc[1][0]), abs(c[1] - sc[1][1])]))
-        cells[c] = {'square': i, 'values': set(digits)}
+        cells[c] = digits
+        squares[c] = i
     return cells
 
 def print_grid(grid):
     if grid is None:
         print 'NONE'
         return
-    col_width = max(len(grid[c]['values']) for c in grid)
+    col_width = max(len(grid[c]) for c in grid)
     for r in xrange(size):
-        print ''.join(''.join(grid[r, c]['values']).center(col_width) + ('|' if c % 3 == 2 else ' ') for c in xrange(size))
+        print ''.join(grid[r, c].center(col_width) + ('|' if c % 3 == 2 else ' ') for c in xrange(size))
         if r % 3 == 2:
             print '-' * (col_width + 1) * 9
 
 def unroll_grid(grid):
     if grid is None:
         return 'NONE'
-    return ''.join([''.join(grid[(r, c)]['values']) for r in xrange(size) for c in xrange(size)])
+    return ''.join([grid[(r, c)] for r in xrange(size) for c in xrange(size)])
 
 def affected_cells(grid, cell):
-    c0, c1, s = cell[0], cell[1], grid[cell]['square']
-    affected = set(c for c in grid if c[0] == c0 or c[1] == c1 or grid[c]['square'] == s)
+    c0, c1, s = cell[0], cell[1], squares[cell]
+    affected = set(c for c in grid if c[0] == c0 or c[1] == c1 or squares[c] == s)
     return affected.difference([cell])
 
 def solve_grid(grid, raw):
     raw_values = [c for c in raw if c in digits or c == '0']
     assert len(raw_values) == size * size
-    assignments = {}
     for r in xrange(size):
         for c in xrange(size):
             i = size * r + c
             if raw_values[i] != '0':
-                assignments[(r, c)] = raw_values[i]
-    for c in assignments:
-        grid = update_grid(grid, c, assignments[c])
-        if not grid:
-            raise ValueError('Initial grid is confusing')
+                grid = assign(grid, (r, c), raw_values[i])
+                if not grid:
+                    raise ValueError('Initial grid is confusing')
     return search(grid)
 
-def update_affected(grid, cell, value):
-    affected = affected_cells(grid, cell)
-    for c in affected:
-        if not value in grid[c]['values']:
-            continue
-        grid[c]['values'] = grid[c]['values'].difference([value])
-        if len(grid[c]['values']) == 0:
+def eliminate(grid, cell, value):
+    if value not in grid[cell]:
+        return grid
+    peers = affected_cells(grid, cell)
+    grid[cell] = grid[cell].replace(value, '')
+    if len(grid[cell]) == 0:
+        return None
+    elif len(grid[cell]) == 1:
+        the_value = grid[cell]
+        if not all(eliminate(grid, c, the_value) for c in peers):
             return None
-        elif len(grid[c]['values']) == 1:
-            grid = update_affected(grid, cell, value)
-            if grid is None:
-                break
+    
     return grid
 
-def update_grid(grid, cell, value):
-    if (len(grid[cell]['values']) == 1) and (value in grid[cell]['values']):
+def assign(grid, cell, value):
+    free_values = grid[cell].replace(value, '')
+    if all(eliminate(grid, cell, v) for v in free_values):
         return grid
-    grid[cell]['values'] = set([value])
-    return update_affected(grid, cell, value)
+    return None
 
 def search(grid):
-    if grid is None or all([len(grid[c]['values']) == 1 for c in grid]):
+    if grid is None or all([len(grid[c]) == 1 for c in grid]):
         return grid
     def value_count(cell):
-        l = len(grid[cell]['values'])
+        l = len(grid[cell])
         return l if l > 1 else 10
     next_cell = min(grid, key = value_count)
-    for v in grid[next_cell]['values']:
-        solution = search(update_grid(copy.deepcopy(grid), next_cell, v))
+    for v in grid[next_cell]:
+        solution = search(assign(grid.copy(), next_cell, v))
         if solution is not None:
             return solution
 
@@ -90,11 +88,11 @@ class TestSudoku(unittest.TestCase):
         self.assertEqual(len(cells), size * size)
         self.assertEqual(len(set(c[0] for c in cells)), size)
         self.assertEqual(len(set(c[1] for c in cells)), size)
-        self.assertEqual(len(set(cells[c]['square'] for c in cells)), size)
-        self.assertEqual(cells[(5, 3)]['square'], 4)
-        self.assertEqual(cells[(0, 0)]['square'], 0)
-        self.assertEqual(cells[(8, 8)]['square'], 8)
-        self.assertEqual(cells[(7, 1)]['square'], 6)
+        self.assertEqual(len(set(squares.values())), size)
+        self.assertEqual(squares[(5, 3)], 4)
+        self.assertEqual(squares[(0, 0)], 0)
+        self.assertEqual(squares[(8, 8)], 8)
+        self.assertEqual(squares[(7, 1)], 6)
 
     def test_affected_cells(self):
         cells = create_empty_grid()
@@ -110,8 +108,6 @@ class TestSudoku(unittest.TestCase):
     def test_solver(self):
         grid = create_empty_grid()
         grid = solve_grid(grid, '700100000020000015000006390200018000040090070000750003078500000560000040000001002')
-        print ''
-        print_grid(grid)
         self.assertEqual(unroll_grid(grid), '789135624623947815451286397237418569845693271916752483178524936562379148394861752')
         grid = create_empty_grid()
         grid = solve_grid(grid, '700100000020000015000006390200018000040090070000750003078500000560000040003001002')

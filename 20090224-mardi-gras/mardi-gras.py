@@ -19,7 +19,7 @@ def mardi_gras(year):
     easter = computus(year)
     return easter + datetime.timedelta(days = -5, weeks = -6)
 
-class TestROT13(unittest.TestCase):
+class TestMardiGras(unittest.TestCase):
 
     def test_computus(self):
         self.assertEqual(computus(2009), datetime.date(2009, 4, 12))

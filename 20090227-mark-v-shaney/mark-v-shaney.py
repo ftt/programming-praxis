@@ -17,10 +17,6 @@ class TrigramModel(object):
         for i in xrange(len(token_list)):
             if i > 1:
                 self.pair_extensions[(token_list[i-2], token_list[i-1])][token_list[i]] += 1
-        self.tokens = list(token_list)
-
-    def score_triple(self, starting_pair, extension):
-        return math.log(self.pair_extensions[starting_pair][extension] + 1) - math.log(sum(self.pair_extensions[starting_pair].values()) + len(self.tokens))
 
     def extend_pair(self, starting_pair=None):
         """Takes a pair of tokens or None to extend."""
@@ -43,7 +39,7 @@ class TrigramModel(object):
         if starting_pair is None:
             return choose(self.pair_extensions, scorer=lambda p: sum(self.pair_extensions[p].values()), tester=lambda p: p[0].istitle())
         elif len(starting_pair) == 2:
-            return choose(self.tokens, scorer=lambda t: self.score_triple(starting_pair, t))
+            return choose(self.pair_extensions[starting_pair].keys(), scorer=lambda t: self.pair_extensions[starting_pair][t])
         else:
             raise ValueError("starting_pair")
 
@@ -53,7 +49,7 @@ def process_corpus(file_name, model):
         model.train(f.read().split())
     pair = model.extend_pair()
     text = list(pair)
-    while not text[-1].endswith((".", "?", "!")):
+    while not text[-1].endswith((".", "?", "!")) or len(text) < 30:
         text.append(model.extend_pair(pair))
         pair = tuple(text[-2:])
     return " ".join(text)

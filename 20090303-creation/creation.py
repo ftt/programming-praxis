@@ -1,6 +1,6 @@
 import re
 import sys
-from itertools import product, cycle, izip, repeat
+from itertools import product, cycle, izip, repeat, imap
 from string import ascii_letters, punctuation, digits
 
 
@@ -46,27 +46,30 @@ def try_password(args_tuple):
     return count, "".join(chr(i) for i in password), plain_text
 
 
-def brute_force(cipher_text, password_length, words):
+def brute_force(cipher_text, password_length, words, noise_cutoff):
     password_codes = [ord(c) for c in digits + ascii_letters]
     data = {"words": words, "cipher_text": cipher_text}
     data["message_codes"] = frozenset(range(32, 127) + [ord("\n")])
     data["delimiters"] = re.compile("|".join(map(re.escape, punctuation + " \n")))
     best_results, best_wc = [], 0
     for i in xrange(1, password_length + 1):
-        for result in map(try_password, izip(product(password_codes, repeat=i), repeat(data))):
+        for result in imap(try_password, izip(product(password_codes, repeat=i), repeat(data))):
             if result:
+                if result[0] >= noise_cutoff:
+                    print result[1], result[2]
                 if result[0] > best_wc:
                     best_results, best_wc = [result], result[0]
                 elif result[0] == best_wc:
                     best_results.append(result)
+    print "\n\nBEST RESULTS:\n"
     for result in best_results:
         print result
 
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        max_password_length, cipher_text = 3, create_cipher_text("Hello, world!", "Az0")
+        max_password_length, noise_cutoff, cipher_text = 3, 2, create_cipher_text("Hello, world!", "Az0")
     else:
-        max_password_length, cipher_text = 20, read_cipher_text(sys.argv[1])
+        max_password_length, noise_cutoff, cipher_text = 20, 5, read_cipher_text(sys.argv[1])
     words = load_words()
-    brute_force(cipher_text, max_password_length, words)
+    brute_force(cipher_text, max_password_length, words, noise_cutoff)

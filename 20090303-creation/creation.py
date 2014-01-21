@@ -1,7 +1,6 @@
-import re
 import sys
-from itertools import product, cycle, izip, repeat, imap
-from string import ascii_letters, punctuation, digits
+from itertools import cycle, izip
+from collections import Counter
 
 
 def load_words():
@@ -14,13 +13,16 @@ def read_cipher_text(file_name):
     return cipher_text
 
 
-def create_cipher_text(plain_text, password):
-    plain_text = [ord(c) for c in plain_text]
-    password = [ord(c) for c in password]
-    cipher_text = []
-    for (c, p) in izip(plain_text, cycle(password)):
-        cipher_text.append(c ^ p)
-    return cipher_text
+def most_frequent_symbol(stripe):
+    return Counter(stripe).most_common(1)[0][0]
+
+
+def make_password(password_length, cipher_text):
+    # split the text into stripes of password_length and find the most common
+    # symbol, presumably, a space (32 in ASCII)
+    guessed_spaces = (most_frequent_symbol(stripe) for stripe in
+                      (cipher_text[i::password_length] for i in xrange(password_length)))
+    return [i ^ 32 for i in guessed_spaces]
 
 
 def decipher(cipher_text, password, message_codes):
@@ -33,43 +35,24 @@ def decipher(cipher_text, password, message_codes):
     return plain_text
 
 
-def try_password(args_tuple):
-    password, data = args_tuple
-    plain_text = decipher(data["cipher_text"], password, data["message_codes"])
-    if plain_text is None:
-        return None
-    plain_text = "".join(chr(i) for i in plain_text)
-    plain_words = {w.lower() for w in re.split(data["delimiters"], plain_text) if w.isalpha()}
-    count = len(plain_words & data["words"])
-    if count == 0:
-        return None
-    return count, "".join(chr(i) for i in password), plain_text
-
-
-def brute_force(cipher_text, password_length, words, noise_cutoff):
-    password_codes = [ord(c) for c in digits + ascii_letters]
-    data = {"words": words, "cipher_text": cipher_text}
-    data["message_codes"] = frozenset(range(32, 127) + [ord("\n")])
-    data["delimiters"] = re.compile("|".join(map(re.escape, punctuation + " \n")))
-    best_results, best_wc = [], 0
-    for i in xrange(1, password_length + 1):
-        for result in imap(try_password, izip(product(password_codes, repeat=i), repeat(data))):
-            if result:
-                if result[0] >= noise_cutoff:
-                    print result[1], result[2]
-                if result[0] > best_wc:
-                    best_results, best_wc = [result], result[0]
-                elif result[0] == best_wc:
-                    best_results.append(result)
-    print "\n\nBEST RESULTS:\n"
-    for result in best_results:
-        print result
+def decrypt(cipher_text, words, max_password_length):
+    message_codes = frozenset(range(32, 127) + [ord("\n")])
+    for l in xrange(max_password_length):
+        raw_password = make_password(l, cipher_text)
+        password = "".join(chr(i) for i in raw_password)
+        if password.lower() in words:
+            raw_plain_text = decipher(cipher_text, raw_password, message_codes)
+            if raw_plain_text is None:
+                continue
+            print "".join(chr(i) for i in raw_plain_text)
+            print "\nThe password is {0}\n\n".format(password)
+            reply = raw_input("Continue? (y/n) ")
+            if reply.lower().startswith("n"):
+                break
 
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        max_password_length, noise_cutoff, cipher_text = 3, 2, create_cipher_text("Hello, world!", "Az0")
+        print "Need a cipher text to decrypt."
     else:
-        max_password_length, noise_cutoff, cipher_text = 20, 5, read_cipher_text(sys.argv[1])
-    words = load_words()
-    brute_force(cipher_text, max_password_length, words, noise_cutoff)
+        decrypt(read_cipher_text(sys.argv[1]), load_words(), 20)

@@ -1,6 +1,5 @@
 import collections
 import random
-import math
 import sys
 
 

@@ -50,5 +50,5 @@ class BinarySearchTest(unittest.TestCase):
         self.assertEquals(bsearch_slice(32, [32, 32, 32]), 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
